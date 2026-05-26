@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.protocol.frame import FrameDecodeError, parse
+from app.recording import recorder_manager
 from app.runtime.codec import jpeg_to_bgr
 from app.runtime.registry import registry
 
@@ -24,6 +26,18 @@ MODE_BY_ID = {
 }
 
 SIZE_BY_VARIANT = {0: "n", 1: "s", 2: "m", 3: "l", 4: "x"}
+
+
+def _detections_from_result(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten any inference result into a list of Box-shaped dicts.
+
+    Only modes that surface bounding boxes contribute to motion. For modes
+    without boxes (cls, sam3, obb without box equivalents), returns []."""
+    if "boxes" in result:
+        return result["boxes"]
+    if "people" in result:
+        return [p["box"] for p in result["people"]]
+    return []
 
 
 @router.websocket("/ws")
@@ -62,6 +76,11 @@ async def ws_stream(ws: WebSocket) -> None:
             result["frame_id"] = frame_id
             result["ms"] = round(ms, 2)
             await ws.send_json(result)
+
+            camera_id = fp.header.get("camera_id") if isinstance(fp.header, dict) else None
+            if camera_id:
+                recorder_manager.feed(camera_id, img, _detections_from_result(result))
+
             frame_id += 1
     except WebSocketDisconnect:
         log.info("ws disconnected: %s (after %d frames)", ws.client, frame_id)

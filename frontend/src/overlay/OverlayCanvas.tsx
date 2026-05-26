@@ -31,7 +31,7 @@ export function OverlayCanvas({ videoRef }: Props) {
     if (canvas.width !== vw) canvas.width = vw;
     if (canvas.height !== vh) canvas.height = vh;
 
-    if (!lastResult || lastResult.type === 'error') {
+    if (!lastResult) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }

@@ -77,17 +77,21 @@ export function useFrameSender({
 
     async function tick() {
       const s = stateRef.current;
-      if (!s.paused && video.videoWidth > 0) {
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
+      // video/canvas/ctx are non-null: guarded before useEffect body runs.
+      const v = video!;
+      const c = canvas!;
+      const x = ctx!;
+      if (!s.paused && v.videoWidth > 0) {
+        const vw = v.videoWidth;
+        const vh = v.videoHeight;
         const scale = Math.min(1, maxSide / Math.max(vw, vh));
         const w = Math.round(vw * scale);
         const h = Math.round(vh * scale);
-        if (canvas.width !== w) canvas.width = w;
-        if (canvas.height !== h) canvas.height = h;
-        ctx.drawImage(video, 0, 0, w, h);
+        if (c.width !== w) c.width = w;
+        if (c.height !== h) c.height = h;
+        x.drawImage(v, 0, 0, w, h);
         const blob: Blob | null = await new Promise((res) =>
-          canvas.toBlob(res, 'image/jpeg', jpegQuality),
+          c.toBlob(res, 'image/jpeg', jpegQuality),
         );
         if (blob) {
           const pkt = await buildPacket({

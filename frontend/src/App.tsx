@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppState } from './state/appState';
 import { useWebcam } from './camera/useWebcam';
 import { CameraView } from './camera/CameraView';
+import { CameraPicker } from './camera/CameraPicker';
 import { useInferenceWS } from './stream/useInferenceWS';
 import { useFrameSender } from './stream/useFrameSender';
 import { OverlayCanvas } from './overlay/OverlayCanvas';
@@ -38,7 +39,8 @@ function App() {
   const lastResult = useAppState((s) => s.lastResult);
   const pushResult = useAppState((s) => s.pushResult);
 
-  const { videoRef, ready, error } = useWebcam();
+  const selectedDeviceId = useAppState((s) => s.selectedDeviceId);
+  const { videoRef, ready, error } = useWebcam({ deviceId: selectedDeviceId });
   const { status, send, lastMessage } = useInferenceWS(WS_URL);
   useFrameSender({ videoRef, ready, send });
 
@@ -66,6 +68,7 @@ function App() {
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui', color: '#eee', background: '#0c0c0c' }}>
       <aside style={{ width: 280, padding: 16, borderRight: '1px solid #222', background: '#141414', overflowY: 'auto' }}>
         <h2 style={{ marginTop: 0 }}>Object Detection</h2>
+        <CameraPicker />
 
         <h4>YOLO26 task</h4>
         {YOLO_TASKS.map((t) => (

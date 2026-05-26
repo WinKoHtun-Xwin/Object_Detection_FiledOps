@@ -2,9 +2,11 @@
 from app.recognition import db as dbmod
 from app.recognition.engine import FaceEngine
 from app.recognition.gallery import Gallery
+from app.recognition.worker import RecognitionWorker
 
 dbmod.init_schema()
 face_engine = FaceEngine()
 gallery = Gallery()
+recognition_worker = RecognitionWorker(engine=face_engine, gallery=gallery)
 
-__all__ = ["face_engine", "gallery"]
+__all__ = ["face_engine", "gallery", "recognition_worker"]

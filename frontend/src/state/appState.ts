@@ -10,6 +10,7 @@ interface AppState {
   tracking: boolean;
   mirror: boolean;
   paused: boolean;
+  recognizeFaces: boolean;
 
   selectedDeviceId: string | null;
   cameraId: string;
@@ -26,6 +27,7 @@ interface AppState {
   setTracking: (b: boolean) => void;
   setMirror: (b: boolean) => void;
   setPaused: (b: boolean) => void;
+  setRecognizeFaces: (b: boolean) => void;
 
   setSelectedDeviceId: (id: string | null) => void;
   setCameraId: (id: string) => void;
@@ -43,6 +45,7 @@ export const useAppState = create<AppState>((set) => ({
   tracking: false,
   mirror: true,
   paused: false,
+  recognizeFaces: false,
 
   selectedDeviceId: null,
   cameraId: 'cam-default',
@@ -59,6 +62,7 @@ export const useAppState = create<AppState>((set) => ({
   setTracking: (tracking) => set({ tracking }),
   setMirror: (mirror) => set({ mirror }),
   setPaused: (paused) => set({ paused }),
+  setRecognizeFaces: (recognizeFaces) => set({ recognizeFaces }),
 
   setSelectedDeviceId: (selectedDeviceId) => set({ selectedDeviceId }),
   setCameraId: (cameraId) => set({ cameraId }),

@@ -41,9 +41,16 @@ export interface ClsTop {
   conf: number;
 }
 
+export interface FaceMatch {
+  bbox: [number, number, number, number];   // normalized x, y, w, h
+  name: string;
+  score: number;
+  kind: 'high' | 'mid' | 'unknown';
+}
+
 export type InferenceResult =
-  | { type: 'detect'; frame_id: number; ms: number; boxes: Box[] }
-  | { type: 'pose';   frame_id: number; ms: number; people: Person[] }
+  | { type: 'detect'; frame_id: number; ms: number; boxes: Box[]; faces?: FaceMatch[] }
+  | { type: 'pose';   frame_id: number; ms: number; people: Person[]; faces?: FaceMatch[] }
   | { type: 'sam3';   frame_id: number; ms: number; masks: MaskResult[] }
   | { type: 'obb';    frame_id: number; ms: number; obboxes: OBBox[] }
   | { type: 'cls';    frame_id: number; ms: number; topk: ClsTop[] };

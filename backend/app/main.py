@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.api import health, stream
+from app.api import clips, health, stream
 from app.config import settings
 
 
@@ -20,7 +21,11 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(clips.router, prefix="/api")
     app.include_router(stream.router)  # /ws at root
+
+    settings.clips_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/clips", StaticFiles(directory=settings.clips_dir), name="clips")
     return app
 
 

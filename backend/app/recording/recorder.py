@@ -116,16 +116,23 @@ class MotionRecorder:
 
     def _open_writer(self, path: Path, started_at: float) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        self._writer = cv2.VideoWriter(
-            str(path), fourcc, self._fps, (self._frame_w, self._frame_h)
-        )
-        if not self._writer.isOpened():
+        # Try H.264 first (browser-playable). Fall back to mp4v if codec missing.
+        self._writer = None
+        for tag in ("avc1", "H264", "mp4v"):
+            fourcc = cv2.VideoWriter_fourcc(*tag)
+            writer = cv2.VideoWriter(
+                str(path), fourcc, self._fps, (self._frame_w, self._frame_h)
+            )
+            if writer.isOpened():
+                self._writer = writer
+                log.info("clip opened (%s): %s", tag, path)
+                break
+            writer.release()
+        if self._writer is None:
             log.error("VideoWriter failed to open: %s", path)
-            self._writer = None
+            self._state = _State.IDLE
             return
         self._clip_started_at = started_at
-        log.info("clip opened: %s", path)
 
     def _writer_write(self, frame: np.ndarray) -> None:
         if self._writer is not None:

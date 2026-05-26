@@ -3,13 +3,14 @@ import { useAppState } from './state/appState';
 import { useWebcam } from './camera/useWebcam';
 import { CameraView } from './camera/CameraView';
 import { CameraPicker } from './camera/CameraPicker';
+import { ClipsPanel } from './clips/ClipsPanel';
 import { useInferenceWS } from './stream/useInferenceWS';
 import { useFrameSender } from './stream/useFrameSender';
 import { OverlayCanvas } from './overlay/OverlayCanvas';
 import type { ModeId, YoloSize } from './types';
 import './App.css';
 
-const WS_URL = 'ws://localhost:8000/ws';
+const WS_URL = 'ws://localhost:8001/ws';
 
 const YOLO_TASKS: { id: ModeId; label: string }[] = [
   { id: 'yolo_detect', label: 'Detect' },
@@ -155,6 +156,8 @@ function App() {
         <label style={{ display: 'block', margin: '4px 0' }}>
           <input type="checkbox" checked={paused} onChange={(e) => setPaused(e.target.checked)} /> Pause
         </label>
+
+        <ClipsPanel />
 
         <p style={{ color: '#888', fontSize: 12, marginTop: 24 }}>
           YOLO26: detect / seg / pose / obb / cls × n/s/m/l/x. SAM 3 text-prompt segmentation.

@@ -1,0 +1,15 @@
+pyproject.toml
+app/__init__.py
+app/config.py
+app/main.py
+app/api/__init__.py
+app/api/health.py
+app/inference/__init__.py
+app/protocol/__init__.py
+app/runtime/__init__.py
+app/runtime/device.py
+object_detection_backend.egg-info/PKG-INFO
+object_detection_backend.egg-info/SOURCES.txt
+object_detection_backend.egg-info/dependency_links.txt
+object_detection_backend.egg-info/requires.txt
+object_detection_backend.egg-info/top_level.txt

@@ -5,6 +5,7 @@ import App from './App';
 import { LivePage } from './pages/LivePage';
 import { PeoplePage } from './pages/PeoplePage';
 import { PersonDetailPage } from './pages/PersonDetailPage';
+import { ReviewPage } from './pages/ReviewPage';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
           <Route index element={<LivePage />} />
           <Route path="people" element={<PeoplePage />} />
           <Route path="people/:id" element={<PersonDetailPage />} />
+          <Route path="review" element={<ReviewPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

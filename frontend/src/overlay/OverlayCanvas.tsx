@@ -5,7 +5,6 @@ import { drawPose } from './drawPose';
 import { drawMasks, preloadMasks } from './drawMasks';
 import { drawOBB } from './drawOBB';
 import { drawClassification } from './drawClassification';
-import { drawFaceNames } from './drawFaceNames';
 
 interface Props {
   readonly videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -38,14 +37,8 @@ export function OverlayCanvas({ videoRef }: Props) {
     }
     if (lastResult.type === 'detect') {
       drawBoxes(ctx, lastResult.boxes, false); // video itself is mirrored via CSS
-      if (lastResult.faces && lastResult.faces.length > 0) {
-        drawFaceNames(ctx, lastResult.faces);
-      }
     } else if (lastResult.type === 'pose') {
       drawPose(ctx, lastResult.people);
-      if (lastResult.faces && lastResult.faces.length > 0) {
-        drawFaceNames(ctx, lastResult.faces);
-      }
     } else if (lastResult.type === 'sam3') {
       // Bitmaps may still be decoding from the data URLs. Draw what's ready now,
       // then redraw once all decodes complete.

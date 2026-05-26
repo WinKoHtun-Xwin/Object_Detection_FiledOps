@@ -7,8 +7,6 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from dataclasses import asdict
-
 from app.protocol.frame import FrameDecodeError, parse
 from app.recognition import live_recognizer
 from app.recording import recorder_manager
@@ -86,11 +84,19 @@ async def ws_stream(ws: WebSocket) -> None:
                 recorder_manager.feed(camera_id, img, _detections_from_result(result))
 
             if camera_id and isinstance(fp.header, dict) and fp.header.get("recognize"):
-                person_boxes = [b for b in _detections_from_result(result) if b.get("label") == "person"]
+                # Track each person box's index inside result["boxes"] so we can
+                # append the recognized name to its label after matching.
+                result_boxes = result.get("boxes") or []
+                person_indices = [i for i, b in enumerate(result_boxes) if b.get("label") == "person"]
+                person_boxes = [result_boxes[i] for i in person_indices]
                 if person_boxes:
                     try:
                         matches = live_recognizer.annotate(camera_id, img, person_boxes)
-                        result["faces"] = [asdict(m) for m in matches]
+                        for m in matches:
+                            if 0 <= m.person_box_idx < len(person_indices):
+                                target = result_boxes[person_indices[m.person_box_idx]]
+                                suffix = f" · {m.name} {m.score:.2f}" if m.kind != "unknown" else " · Unknown"
+                                target["label"] = f"{target.get('label', 'person')}{suffix}"
                     except Exception:
                         log.exception("live recognition failed")
 

@@ -25,6 +25,7 @@ class FaceMatch:
     name: str                                  # "Alice" | "Unknown"
     score: float
     kind: str                                  # "high" | "mid" | "unknown"
+    person_box_idx: int = -1                   # which input person_boxes index produced this match
 
 
 @dataclass
@@ -59,7 +60,7 @@ class LiveRecognizer:
 
     def _run(self, frame_bgr: np.ndarray, person_boxes: list[dict]):
         h, w = frame_bgr.shape[:2]
-        for pb in person_boxes:
+        for idx, pb in enumerate(person_boxes):
             x1 = int(round(float(pb["x"]) * w))
             y1 = int(round(float(pb["y"]) * h))
             x2 = int(round((float(pb["x"]) + float(pb["w"])) * w))
@@ -93,6 +94,7 @@ class LiveRecognizer:
                     name=name,
                     score=float(score),
                     kind=kind,
+                    person_box_idx=idx,
                 )
 
     @staticmethod

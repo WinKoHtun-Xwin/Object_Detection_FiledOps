@@ -37,6 +37,8 @@ class Settings:
     match_low: float = 0.40
     recognition_sample_fps: float = 1.0
     recognition_device: str = "cuda"
+    live_recognition_interval: float = 1.0     # seconds between runs per camera
+    live_recognition_cache_ttl: float = 3.0    # seconds a cached match stays valid
 
 
 settings = Settings()

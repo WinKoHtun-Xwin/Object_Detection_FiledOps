@@ -24,3 +24,6 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# runtime-generated
+backend/data/

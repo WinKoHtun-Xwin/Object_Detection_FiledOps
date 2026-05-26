@@ -4,6 +4,7 @@ interface UseWebcamOptions {
   width?: number;
   height?: number;
   facingMode?: 'user' | 'environment';
+  deviceId?: string | null;
 }
 
 interface UseWebcamResult {
@@ -20,6 +21,7 @@ export function useWebcam(opts: UseWebcamOptions = {}): UseWebcamResult {
   useEffect(() => {
     let stream: MediaStream | null = null;
     let cancelled = false;
+    setReady(false);
 
     (async () => {
       try {
@@ -28,6 +30,7 @@ export function useWebcam(opts: UseWebcamOptions = {}): UseWebcamResult {
             width: { ideal: opts.width ?? 1280 },
             height: { ideal: opts.height ?? 720 },
             facingMode: opts.facingMode ?? 'user',
+            ...(opts.deviceId ? { deviceId: { exact: opts.deviceId } } : {}),
           },
           audio: false,
         });
@@ -47,7 +50,7 @@ export function useWebcam(opts: UseWebcamOptions = {}): UseWebcamResult {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [opts.width, opts.height, opts.facingMode]);
+  }, [opts.width, opts.height, opts.facingMode, opts.deviceId]);
 
   return { videoRef, ready, error };
 }

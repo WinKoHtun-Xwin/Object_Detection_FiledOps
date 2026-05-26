@@ -88,8 +88,11 @@ async def ws_stream(ws: WebSocket) -> None:
             if camera_id and isinstance(fp.header, dict) and fp.header.get("recognize"):
                 person_boxes = [b for b in _detections_from_result(result) if b.get("label") == "person"]
                 if person_boxes:
-                    matches = live_recognizer.annotate(camera_id, img, person_boxes)
-                    result["faces"] = [asdict(m) for m in matches]
+                    try:
+                        matches = live_recognizer.annotate(camera_id, img, person_boxes)
+                        result["faces"] = [asdict(m) for m in matches]
+                    except Exception:
+                        log.exception("live recognition failed")
 
             await ws.send_json(result)
             frame_id += 1

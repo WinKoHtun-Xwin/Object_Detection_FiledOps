@@ -11,6 +11,9 @@ interface AppState {
   mirror: boolean;
   paused: boolean;
 
+  selectedDeviceId: string | null;
+  cameraId: string;
+
   fps: number;
   inferenceMs: number;
   lastResult: InferenceResult | null;
@@ -23,6 +26,9 @@ interface AppState {
   setTracking: (b: boolean) => void;
   setMirror: (b: boolean) => void;
   setPaused: (b: boolean) => void;
+
+  setSelectedDeviceId: (id: string | null) => void;
+  setCameraId: (id: string) => void;
 
   pushResult: (r: InferenceResult) => void;
   setFps: (n: number) => void;
@@ -38,6 +44,9 @@ export const useAppState = create<AppState>((set) => ({
   mirror: true,
   paused: false,
 
+  selectedDeviceId: null,
+  cameraId: 'cam-default',
+
   fps: 0,
   inferenceMs: 0,
   lastResult: null,
@@ -50,6 +59,9 @@ export const useAppState = create<AppState>((set) => ({
   setTracking: (tracking) => set({ tracking }),
   setMirror: (mirror) => set({ mirror }),
   setPaused: (paused) => set({ paused }),
+
+  setSelectedDeviceId: (selectedDeviceId) => set({ selectedDeviceId }),
+  setCameraId: (cameraId) => set({ cameraId }),
 
   pushResult: (r) => set({ lastResult: r, inferenceMs: r.ms }),
   setFps: (fps) => set({ fps }),

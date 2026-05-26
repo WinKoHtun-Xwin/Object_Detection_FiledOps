@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -31,7 +32,7 @@ class _State(Enum):
 
 
 class MotionRecorder:
-    def __init__(self, camera_id: str, frame_size: tuple[int, int]) -> None:
+    def __init__(self, camera_id: str, frame_size: tuple[int, int], on_clip_closed: Callable[[Path], None] | None = None) -> None:
         self._camera_id = camera_id
         self._frame_w, self._frame_h = frame_size
 
@@ -48,6 +49,8 @@ class MotionRecorder:
         self._clip_started_at: float = 0.0     # wall time of clip's first frame
         self._last_motion_ts: float = 0.0
         self._event_open = False               # True between trigger and final close
+        self._on_clip_closed = on_clip_closed
+        self._event_first_clip: Path | None = None
 
     # ---- public ----
 
@@ -60,10 +63,13 @@ class MotionRecorder:
         if (w, h) != (self._frame_w, self._frame_h):
             log.info("frame size changed %sx%s -> %sx%s; closing current clip",
                      self._frame_w, self._frame_h, w, h)
+            was_event = self._event_open
             self._close_writer()
             self._event_open = False
             self._state = _State.IDLE
             self._frame_w, self._frame_h = w, h
+            if was_event:
+                self._fire_close_callback()
 
         self._ring.append((ts, frame_bgr.copy()))
         moving = self._detector.update(detections)
@@ -81,15 +87,19 @@ class MotionRecorder:
                     self._close_writer()
                     self._event_open = False
                     self._state = _State.IDLE
+                    self._fire_close_callback()
                     return
             # rotate every clip_seconds
             if ts - self._clip_started_at >= settings.clip_seconds:
                 self._rotate_clip(ts)
 
     def close(self) -> None:
+        was_event = self._event_open
         self._close_writer()
         self._event_open = False
         self._state = _State.IDLE
+        if was_event:
+            self._fire_close_callback()
 
     # ---- internals ----
 
@@ -106,6 +116,7 @@ class MotionRecorder:
         snap_path = path.with_suffix(".jpg")
         cv2.imwrite(str(snap_path), trigger_frame)
         self._event_open = True
+        self._event_first_clip = path
         self._last_motion_ts = trigger_ts
 
     def _rotate_clip(self, ts: float) -> None:
@@ -143,6 +154,15 @@ class MotionRecorder:
             self._writer.release()
             log.info("clip closed")
             self._writer = None
+
+    def _fire_close_callback(self) -> None:
+        first = self._event_first_clip
+        self._event_first_clip = None
+        if first is not None and self._on_clip_closed is not None:
+            try:
+                self._on_clip_closed(first)
+            except Exception:
+                log.exception("on_clip_closed callback failed")
 
     def _make_clip_path(self, ts: float) -> Path:
         dt = datetime.fromtimestamp(ts)

@@ -31,6 +31,8 @@ export function LivePage() {
   const setMirror = useAppState((s) => s.setMirror);
   const paused = useAppState((s) => s.paused);
   const setPaused = useAppState((s) => s.setPaused);
+  const recognizeFaces = useAppState((s) => s.recognizeFaces);
+  const setRecognizeFaces = useAppState((s) => s.setRecognizeFaces);
   const yoloConf = useAppState((s) => s.yoloConf);
   const setYoloConf = useAppState((s) => s.setYoloConf);
   const sam3Text = useAppState((s) => s.sam3Text);
@@ -155,6 +157,10 @@ export function LivePage() {
         </label>
         <label style={{ display: 'block', margin: '4px 0' }}>
           <input type="checkbox" checked={paused} onChange={(e) => setPaused(e.target.checked)} /> Pause
+        </label>
+        <label style={{ display: 'block', margin: '4px 0' }}>
+          <input type="checkbox" checked={recognizeFaces}
+            onChange={(e) => setRecognizeFaces(e.target.checked)} /> Recognize faces
         </label>
 
         <ClipsPanel />

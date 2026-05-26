@@ -29,6 +29,7 @@ export function useFrameSender({
   const tracking = useAppState((s) => s.tracking);
   const yoloConf = useAppState((s) => s.yoloConf);
   const cameraId = useAppState((s) => s.cameraId);
+  const recognizeFaces = useAppState((s) => s.recognizeFaces);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   if (canvasRef.current === null && typeof document !== 'undefined') {
@@ -37,8 +38,8 @@ export function useFrameSender({
 
   // Keep latest mode/prompt in a ref so the RAF loop reads fresh values
   // without restarting on every state change.
-  const stateRef = useRef({ mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId });
-  stateRef.current = { mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId };
+  const stateRef = useRef({ mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId, recognizeFaces });
+  stateRef.current = { mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId, recognizeFaces };
 
   useEffect(() => {
     if (!ready) return;
@@ -60,7 +61,7 @@ export function useFrameSender({
     }
 
     function buildHeader(s: typeof stateRef.current): Record<string, unknown> {
-      const base: Record<string, unknown> = { camera_id: s.cameraId };
+      const base: Record<string, unknown> = { camera_id: s.cameraId, recognize: s.recognizeFaces };
       if (s.mode.startsWith('yolo_')) {
         return { ...base, conf: s.yoloConf };
       }

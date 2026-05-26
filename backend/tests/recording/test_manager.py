@@ -62,3 +62,13 @@ def test_unknown_camera_creates_recorder_lazily(rec_root: Path) -> None:
     assert "cam-new" not in mgr._recorders   # noqa: SLF001
     mgr.feed("cam-new", _frame(), [])
     assert "cam-new" in mgr._recorders   # noqa: SLF001
+
+
+def test_close_releases_recorder(rec_root: Path) -> None:
+    mgr = RecorderManager()
+    mgr.feed("cam-A", _frame(), [])
+    assert "cam-A" in mgr._recorders   # noqa: SLF001
+    mgr.close("cam-A")
+    assert "cam-A" not in mgr._recorders   # noqa: SLF001
+    # closing an unknown camera is a no-op
+    mgr.close("cam-nonexistent")

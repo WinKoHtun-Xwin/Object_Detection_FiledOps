@@ -45,6 +45,7 @@ async def ws_stream(ws: WebSocket) -> None:
     await ws.accept()
     log.info("ws connected: %s", ws.client)
     frame_id = 0
+    current_camera_id: str | None = None
     try:
         while True:
             packet = await ws.receive_bytes()
@@ -79,8 +80,11 @@ async def ws_stream(ws: WebSocket) -> None:
 
             camera_id = fp.header.get("camera_id") if isinstance(fp.header, dict) else None
             if camera_id:
+                current_camera_id = camera_id
                 recorder_manager.feed(camera_id, img, _detections_from_result(result))
 
             frame_id += 1
     except WebSocketDisconnect:
         log.info("ws disconnected: %s (after %d frames)", ws.client, frame_id)
+        if current_camera_id is not None:
+            recorder_manager.close(current_camera_id)

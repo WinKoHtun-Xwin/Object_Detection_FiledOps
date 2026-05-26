@@ -25,6 +25,13 @@ class RecorderManager:
             log.info("recorder created: %s (%dx%d)", camera_id, w, h)
         rec.feed(frame_bgr, detections)
 
+    def close(self, camera_id: str) -> None:
+        """Close and remove a single recorder by camera_id. No-op if absent."""
+        rec = self._recorders.pop(camera_id, None)
+        if rec is not None:
+            rec.close()
+            log.info("recorder closed: %s", camera_id)
+
     def close_all(self) -> None:
         for rec in self._recorders.values():
             rec.close()

@@ -7,7 +7,10 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from dataclasses import asdict
+
 from app.protocol.frame import FrameDecodeError, parse
+from app.recognition import live_recognizer
 from app.recording import recorder_manager
 from app.runtime.codec import jpeg_to_bgr
 from app.runtime.registry import registry
@@ -76,13 +79,19 @@ async def ws_stream(ws: WebSocket) -> None:
             ms = (time.perf_counter() - t0) * 1000.0
             result["frame_id"] = frame_id
             result["ms"] = round(ms, 2)
-            await ws.send_json(result)
 
             camera_id = fp.header.get("camera_id") if isinstance(fp.header, dict) else None
             if camera_id:
                 current_camera_id = camera_id
                 recorder_manager.feed(camera_id, img, _detections_from_result(result))
 
+            if camera_id and isinstance(fp.header, dict) and fp.header.get("recognize"):
+                person_boxes = [b for b in _detections_from_result(result) if b.get("label") == "person"]
+                if person_boxes:
+                    matches = live_recognizer.annotate(camera_id, img, person_boxes)
+                    result["faces"] = [asdict(m) for m in matches]
+
+            await ws.send_json(result)
             frame_id += 1
     except WebSocketDisconnect:
         log.info("ws disconnected: %s (after %d frames)", ws.client, frame_id)

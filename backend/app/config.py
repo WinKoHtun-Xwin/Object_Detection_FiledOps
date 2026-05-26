@@ -8,6 +8,8 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 WEIGHTS_DIR = BACKEND_ROOT / "weights"
 CLIPS_DIR = BACKEND_ROOT / "data" / "clips"
+FACES_DIR = BACKEND_ROOT / "data" / "faces"
+DB_PATH = BACKEND_ROOT / "data" / "app.db"
 
 
 @dataclass(frozen=True)
@@ -24,9 +26,17 @@ class Settings:
     clip_seconds: int = 15
     pre_roll_seconds: float = 2.0
     post_roll_seconds: float = 2.0
-    motion_threshold: float = 0.015          # fraction of image width; ~10 px @ 640w
+    motion_threshold: float = 0.015
     motion_classes: tuple[str, ...] = ("person",)
     clip_fps: int = 15
+
+    # --- recognition ---
+    faces_dir: Path = FACES_DIR
+    db_path: Path = DB_PATH
+    match_high: float = 0.55
+    match_low: float = 0.40
+    recognition_sample_fps: float = 1.0
+    recognition_device: str = "cuda"
 
 
 settings = Settings()

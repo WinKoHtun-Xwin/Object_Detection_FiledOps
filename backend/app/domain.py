@@ -16,6 +16,7 @@ class Box:
     h: float
     label: str = ""
     conf: float = 0.0
+    track_id: int | None = None
 
 
 @dataclass

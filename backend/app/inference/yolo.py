@@ -76,7 +76,18 @@ class YoloEngine:
         log.debug("yolo %s/%s %.0fms", self.task, self.size, dt)
 
         if self.task == "detect":
-            return {"type": "detect", "boxes": _extract_boxes(result, w, h)}
+            track_ids = None
+            camera_id = header.get("camera_id")
+            # Live face recognition pins names to track IDs, so recognition
+            # implicitly requires tracking — stamp track IDs whenever tracking is
+            # requested OR recognition is on (the frontend doesn't send a separate
+            # tracking flag for YOLO modes).
+            if camera_id and (header.get("tracking") or header.get("recognize")):
+                from app.inference.tracking import camera_trackers
+
+                det = result.boxes.cpu().numpy()
+                track_ids = camera_trackers.assign(camera_id, det, frame_bgr)
+            return {"type": "detect", "boxes": _extract_boxes(result, w, h, track_ids)}
         if self.task == "seg":
             return {"type": "sam3", "masks": _extract_seg_masks(result, w, h)}
         if self.task == "pose":
@@ -88,7 +99,12 @@ class YoloEngine:
         raise AssertionError(f"unknown task {self.task}")
 
 
-def _extract_boxes(result: Any, w: int, h: int) -> list[dict[str, Any]]:
+def _extract_boxes(
+    result: Any,
+    w: int,
+    h: int,
+    track_ids: list[int | None] | None = None,
+) -> list[dict[str, Any]]:
     if result.boxes is None or len(result.boxes) == 0:
         return []
     names = result.names
@@ -96,7 +112,8 @@ def _extract_boxes(result: Any, w: int, h: int) -> list[dict[str, Any]]:
     cls = result.boxes.cls.cpu().numpy().astype(int)
     conf = result.boxes.conf.cpu().numpy()
     out: list[dict[str, Any]] = []
-    for (x1, y1, x2, y2), c, p in zip(xyxy, cls, conf, strict=True):
+    for i, ((x1, y1, x2, y2), c, p) in enumerate(zip(xyxy, cls, conf, strict=True)):
+        tid = track_ids[i] if track_ids is not None and i < len(track_ids) else None
         out.append(
             asdict(
                 Box(
@@ -106,6 +123,7 @@ def _extract_boxes(result: Any, w: int, h: int) -> list[dict[str, Any]]:
                     h=float(y2 - y1) / h,
                     label=names.get(int(c), str(c)),
                     conf=float(p),
+                    track_id=tid,
                 )
             )
         )

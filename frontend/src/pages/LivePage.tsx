@@ -10,7 +10,7 @@ import { OverlayCanvas } from '../overlay/OverlayCanvas';
 import type { ModeId, YoloSize } from '../types';
 import '../App.css';
 
-const WS_URL = 'ws://localhost:8001/ws';
+const WS_URL = 'ws://localhost:8000/ws';
 
 const YOLO_TASKS: { id: ModeId; label: string }[] = [
   { id: 'yolo_detect', label: 'Detect' },

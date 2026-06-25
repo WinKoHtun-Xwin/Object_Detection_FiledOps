@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppState } from '../state/appState';
 
-const API_BASE = 'http://localhost:8001';
+const API_BASE = 'http://localhost:8000';
 const POLL_INTERVAL_MS = 10000;
 
 interface ClipEntry {

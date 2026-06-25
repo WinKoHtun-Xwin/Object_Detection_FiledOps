@@ -115,7 +115,7 @@ class Settings:
     default_yolo_pose: str = "yolo26n-pose.pt"
     jpeg_quality_hint: int = 70
     frame_max_side: int = 640
-    cors_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:8001")
+    cors_origins: tuple[str, ...] = ("http://localhost:5173","http://localhost:8000", "http://localhost:8001")
 
     # --- recording ---
     clips_dir: Path = CLIPS_DIR
@@ -1952,7 +1952,7 @@ git commit -m "feat(frontend): introduce react-router shell with LivePage"
 - [ ] **Step 1:** Create `frontend/src/api/recognition.ts`:
 
 ```ts
-const API_BASE = 'http://localhost:8001';
+const API_BASE = 'http://localhost:8000';
 
 export interface PersonSummary {
   id: number;

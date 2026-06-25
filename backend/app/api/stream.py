@@ -8,7 +8,9 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.protocol.frame import FrameDecodeError, parse
+from app.inference.tracking import camera_trackers
 from app.recognition import live_recognizer
+from app.recognition.live import FaceMatch
 from app.recording import recorder_manager
 from app.runtime.codec import jpeg_to_bgr
 from app.runtime.registry import registry
@@ -27,6 +29,19 @@ MODE_BY_ID = {
 }
 
 SIZE_BY_VARIANT = {0: "n", 1: "s", 2: "m", 3: "l", 4: "x"}
+
+
+def apply_live_names(boxes: list[dict[str, Any]], names: dict[int, FaceMatch]) -> None:
+    """Append recognized names to box labels, matched by track_id."""
+    for b in boxes:
+        tid = b.get("track_id")
+        if tid is None:
+            continue
+        m = names.get(tid)
+        if m is None:
+            continue
+        suffix = f" · {m.name} {m.score:.2f}" if m.kind != "unknown" else " · Unknown"
+        b["label"] = f"{b.get('label', 'person')}{suffix}"
 
 
 def _detections_from_result(result: dict[str, Any]) -> list[dict[str, Any]]:
@@ -84,19 +99,12 @@ async def ws_stream(ws: WebSocket) -> None:
                 recorder_manager.feed(camera_id, img, _detections_from_result(result))
 
             if camera_id and isinstance(fp.header, dict) and fp.header.get("recognize"):
-                # Track each person box's index inside result["boxes"] so we can
-                # append the recognized name to its label after matching.
                 result_boxes = result.get("boxes") or []
-                person_indices = [i for i, b in enumerate(result_boxes) if b.get("label") == "person"]
-                person_boxes = [result_boxes[i] for i in person_indices]
+                person_boxes = [b for b in result_boxes if b.get("label") == "person"]
                 if person_boxes:
                     try:
-                        matches = live_recognizer.annotate(camera_id, img, person_boxes)
-                        for m in matches:
-                            if 0 <= m.person_box_idx < len(person_indices):
-                                target = result_boxes[person_indices[m.person_box_idx]]
-                                suffix = f" · {m.name} {m.score:.2f}" if m.kind != "unknown" else " · Unknown"
-                                target["label"] = f"{target.get('label', 'person')}{suffix}"
+                        names = live_recognizer.annotate(camera_id, img, person_boxes)
+                        apply_live_names(person_boxes, names)
                     except Exception:
                         log.exception("live recognition failed")
 
@@ -106,3 +114,5 @@ async def ws_stream(ws: WebSocket) -> None:
         log.info("ws disconnected: %s (after %d frames)", ws.client, frame_id)
         if current_camera_id is not None:
             recorder_manager.close(current_camera_id)
+            camera_trackers.drop(current_camera_id)
+            live_recognizer.clear_camera(current_camera_id)

@@ -1,6 +1,7 @@
 """FastAPI app factory + route registration."""
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,7 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from app.api import clips, health, recognition, stream
 from app.config import settings
 from app.recognition import db as dbmod
-from app.recognition import gallery, recognition_worker
+from app.recognition import gallery, live_face_engine, live_recognizer, recognition_worker
+
+log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -20,10 +23,16 @@ async def lifespan(_app: FastAPI):
     dbmod.init_schema()
     gallery.reload()
     recognition_worker.start()
+    live_recognizer.start()
+    try:
+        live_face_engine.warmup()
+    except Exception:
+        log.exception("live face engine warmup failed")
     try:
         yield
     finally:
         recognition_worker.stop()
+        live_recognizer.stop()
 
 
 def create_app() -> FastAPI:

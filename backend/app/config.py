@@ -37,8 +37,12 @@ class Settings:
     match_low: float = 0.40
     recognition_sample_fps: float = 1.0
     recognition_device: str = "cuda"
-    live_recognition_interval: float = 1.0     # seconds between runs per camera
-    live_recognition_cache_ttl: float = 3.0    # seconds a cached match stays valid
+    # live recognition (track-pinned)
+    live_recognition_refresh: float = 10.0   # re-confirm a CONFIRMED (high) track this often
+    live_recognition_retry: float = 1.5      # backoff before retrying a TENTATIVE track
+    track_ttl: float = 5.0                   # evict a track's cached name after this unseen gap (s)
+    recognition_queue_max: int = 16          # max queued live face jobs before dropping
+    live_det_size: int = 320                 # InsightFace det_size for live crops (offline stays 640)
 
 
 settings = Settings()

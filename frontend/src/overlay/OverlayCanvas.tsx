@@ -1,16 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useAppState } from '../state/appState';
 import { drawBoxes } from './drawBoxes';
-import { drawPose } from './drawPose';
-import { drawMasks, preloadMasks } from './drawMasks';
-import { drawOBB } from './drawOBB';
-import { drawClassification } from './drawClassification';
 
 interface Props {
   readonly videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
-// Renders detection/segmentation results on top of the <video>.
+// Renders detection results on top of the <video>.
 // Sized to match the video element's intrinsic resolution so coordinates
 // stay correct under CSS `object-fit: contain`.
 export function OverlayCanvas({ videoRef }: Props) {
@@ -37,25 +33,6 @@ export function OverlayCanvas({ videoRef }: Props) {
     }
     if (lastResult.type === 'detect') {
       drawBoxes(ctx, lastResult.boxes, false); // video itself is mirrored via CSS
-    } else if (lastResult.type === 'pose') {
-      drawPose(ctx, lastResult.people);
-    } else if (lastResult.type === 'sam3') {
-      // Bitmaps may still be decoding from the data URLs. Draw what's ready now,
-      // then redraw once all decodes complete.
-      drawMasks(ctx, lastResult.masks);
-      let cancelled = false;
-      void preloadMasks(lastResult.masks).then(() => {
-        if (cancelled) return;
-        if (lastResult.type !== 'sam3') return;
-        drawMasks(ctx, lastResult.masks);
-      });
-      return () => {
-        cancelled = true;
-      };
-    } else if (lastResult.type === 'obb') {
-      drawOBB(ctx, lastResult.obboxes);
-    } else if (lastResult.type === 'cls') {
-      drawClassification(ctx, lastResult.topk);
     } else {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }

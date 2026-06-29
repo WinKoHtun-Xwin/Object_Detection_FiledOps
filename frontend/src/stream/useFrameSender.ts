@@ -10,6 +10,8 @@ interface UseFrameSenderArgs {
   jpegQuality?: number;   // 0..1
 }
 
+const SIZE_TO_VARIANT = { n: 0, s: 1, m: 2, l: 3, x: 4 } as const;
+
 // Captures frames via canvas, encodes JPEG, calls send().
 // Drops the frame if send() returns false (WS not open OR in-flight).
 // Tracks FPS of *sent* (accepted) frames and writes to Zustand.
@@ -22,10 +24,7 @@ export function useFrameSender({
 }: UseFrameSenderArgs) {
   const setFps = useAppState((s) => s.setFps);
   const paused = useAppState((s) => s.paused);
-  const mode = useAppState((s) => s.mode);
   const yoloSize = useAppState((s) => s.yoloSize);
-  const sam3Prompt = useAppState((s) => s.sam3Prompt);
-  const sam3Text = useAppState((s) => s.sam3Text);
   const tracking = useAppState((s) => s.tracking);
   const yoloConf = useAppState((s) => s.yoloConf);
   const cameraId = useAppState((s) => s.cameraId);
@@ -36,10 +35,10 @@ export function useFrameSender({
     canvasRef.current = document.createElement('canvas');
   }
 
-  // Keep latest mode/prompt in a ref so the RAF loop reads fresh values
+  // Keep latest config in a ref so the RAF loop reads fresh values
   // without restarting on every state change.
-  const stateRef = useRef({ mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId, recognizeFaces });
-  stateRef.current = { mode, yoloSize, sam3Prompt, sam3Text, tracking, paused, yoloConf, cameraId, recognizeFaces };
+  const stateRef = useRef({ yoloSize, tracking, paused, yoloConf, cameraId, recognizeFaces });
+  stateRef.current = { yoloSize, tracking, paused, yoloConf, cameraId, recognizeFaces };
 
   useEffect(() => {
     if (!ready) return;
@@ -53,27 +52,13 @@ export function useFrameSender({
     let sentCount = 0;
     let lastReport = performance.now();
 
-    function variantIdFor(s: typeof stateRef.current): number {
-      if (s.mode.startsWith('yolo_')) {
-        return { n: 0, s: 1, m: 2, l: 3, x: 4 }[s.yoloSize];
-      }
-      return { text: 0, point: 1, box: 2 }[s.sam3Prompt];
-    }
-
     function buildHeader(s: typeof stateRef.current): Record<string, unknown> {
-      const base: Record<string, unknown> = { camera_id: s.cameraId, recognize: s.recognizeFaces };
-      if (s.mode.startsWith('yolo_')) {
-        return { ...base, conf: s.yoloConf };
-      }
-      if (s.mode === 'sam3_image' || s.mode === 'sam3_video') {
-        return {
-          ...base,
-          prompt: s.sam3Prompt,
-          text: s.sam3Text,
-          tracking: s.tracking,
-        };
-      }
-      return base;
+      return {
+        camera_id: s.cameraId,
+        recognize: s.recognizeFaces,
+        tracking: s.tracking,
+        conf: s.yoloConf,
+      };
     }
 
     async function tick() {
@@ -96,8 +81,8 @@ export function useFrameSender({
         );
         if (blob) {
           const pkt = await buildPacket({
-            mode: s.mode,
-            variantId: variantIdFor(s),
+            mode: 'yolo_detect',
+            variantId: SIZE_TO_VARIANT[s.yoloSize],
             header: buildHeader(s),
             jpeg: blob,
           });

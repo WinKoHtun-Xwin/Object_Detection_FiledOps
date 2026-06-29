@@ -6,9 +6,8 @@ backend/.venv/
 .ruff_cache/
 .mypy_cache/
 
-# Model weights & third-party clones
+# Model weights
 backend/weights/
-backend/third_party/sam3/
 
 # Frontend
 frontend/node_modules/

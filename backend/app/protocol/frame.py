@@ -2,10 +2,10 @@
 
 Packet layout:
     offset  bytes  field
-    0       1      mode_id        0=yolo_detect, 1=yolo_pose, 2=sam3_image, 3=sam3_video
-    1       1      variant_id     YOLO size or SAM3 prompt kind (engine-specific)
+    0       1      mode_id        0=yolo_detect
+    1       1      variant_id     YOLO size (0=n, 1=s, 2=m, 3=l, 4=x)
     2       4      header_len     uint32 LE -- length of JSON header (0 if none)
-    6       N      header_json    optional JSON (text/points/box/session_id)
+    6       N      header_json    optional JSON (camera_id/conf/recognize/tracking)
     6+N     ...    jpeg_bytes     JPEG-encoded frame
 """
 from __future__ import annotations

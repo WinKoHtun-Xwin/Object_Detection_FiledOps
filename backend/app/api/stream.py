@@ -20,12 +20,6 @@ router = APIRouter()
 
 MODE_BY_ID = {
     0: "yolo_detect",
-    1: "yolo_pose",
-    2: "sam3_image",
-    3: "sam3_video",
-    4: "yolo_seg",
-    5: "yolo_obb",
-    6: "yolo_cls",
 }
 
 SIZE_BY_VARIANT = {0: "n", 1: "s", 2: "m", 3: "l", 4: "x"}
@@ -45,15 +39,8 @@ def apply_live_names(boxes: list[dict[str, Any]], names: dict[int, FaceMatch]) -
 
 
 def _detections_from_result(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Flatten any inference result into a list of Box-shaped dicts.
-
-    Only modes that surface bounding boxes contribute to motion. For modes
-    without boxes (cls, sam3, obb without box equivalents), returns []."""
-    if "boxes" in result:
-        return result["boxes"]
-    if "people" in result:
-        return [p["box"] for p in result["people"]]
-    return []
+    """Return the detection boxes that feed motion detection (empty if none)."""
+    return result.get("boxes", [])
 
 
 @router.websocket("/ws")
@@ -80,7 +67,7 @@ async def ws_stream(ws: WebSocket) -> None:
                 frame_id += 1
                 continue
 
-            size = SIZE_BY_VARIANT.get(fp.variant_id, "n") if mode.startswith("yolo_") else "n"
+            size = SIZE_BY_VARIANT.get(fp.variant_id, "n")
             try:
                 engine = registry.get(mode, size=size)
                 result = engine.infer(img, fp.header)

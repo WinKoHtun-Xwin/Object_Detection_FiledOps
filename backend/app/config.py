@@ -16,7 +16,6 @@ DB_PATH = BACKEND_ROOT / "data" / "app.db"
 class Settings:
     weights_dir: Path = WEIGHTS_DIR
     default_yolo_detect: str = "yolo26n.pt"
-    default_yolo_pose: str = "yolo26n-pose.pt"
     jpeg_quality_hint: int = 70
     frame_max_side: int = 640
     cors_origins: tuple[str, ...] = ("http://localhost:5173","http://localhost:8000", "http://localhost:8001", "http://localhost:8002")

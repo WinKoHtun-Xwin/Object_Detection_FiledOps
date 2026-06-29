@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "object-detection-backend"
 version = "0.1.0"
-description = "FastAPI backend for live YOLO26 + SAM 3 webcam inference"
+description = "FastAPI backend for live YOLO26 webcam object detection"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
@@ -16,8 +16,6 @@ dependencies = [
     "pillow>=10.4",
     "opencv-python>=4.10",
     "ultralytics>=8.3",
-    "huggingface_hub>=0.26",
-    "pycocotools>=2.0.8",
     "insightface>=0.7",
     "onnxruntime-gpu>=1.18",
     "python-multipart>=0.0.9",

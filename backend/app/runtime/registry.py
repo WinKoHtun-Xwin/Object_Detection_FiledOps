@@ -10,10 +10,6 @@ log = logging.getLogger(__name__)
 
 MODE_TO_TASK = {
     "yolo_detect": "detect",
-    "yolo_seg": "seg",
-    "yolo_pose": "pose",
-    "yolo_obb": "obb",
-    "yolo_cls": "cls",
 }
 
 
@@ -31,10 +27,7 @@ class ModelRegistry:
         log.info("lazy-loading engine: %s (size=%s)", mode, size)
         if mode in MODE_TO_TASK:
             from app.inference.yolo import YoloEngine
-            engine = YoloEngine(task=MODE_TO_TASK[mode], size=size, device=self.torch_device)
-        elif mode == "sam3_image":
-            from app.inference.sam3_image import Sam3ImageEngine
-            engine = Sam3ImageEngine(device=self.torch_device)
+            engine = YoloEngine(size=size, device=self.torch_device)
         else:
             raise ValueError(f"unknown mode: {mode}")
 

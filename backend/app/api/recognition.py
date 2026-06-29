@@ -12,6 +12,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from app.config import settings
 from app.recognition import db as dbmod
 from app.recognition import face_engine, gallery
+from app.recognition.quality import blur_variance, is_acceptable_face
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["People"])
@@ -57,6 +58,9 @@ async def create_person(
             log.warning("could not decode upload %s", upload.filename)
             continue
         for face in face_engine.detect_and_embed(img):
+            if not is_acceptable_face(face):
+                log.info("skipping low-quality face from upload %s", upload.filename)
+                continue
             crop_name = f"upload_{uuid.uuid4().hex}.jpg"
             crop_rel = f"{pid}/{crop_name}"
             cv2.imwrite(str(settings.faces_dir / crop_rel), face.crop_bgr)
@@ -182,3 +186,21 @@ def dismiss_review(queue_id: int) -> dict:
         raise HTTPException(status_code=404, detail="queue item not found")
     dbmod.update_queue_status(queue_id, "dismissed")
     return {"ok": True}
+
+
+@review_router.post("/review/purge-lowquality")
+def purge_low_quality() -> dict:
+    """Re-score the stored crops of all pending review items and dismiss the
+    blurry ones (below `face_min_blur_var`). Cleans up items queued before the
+    quality gate existed; the gate prevents new blurry faces going forward."""
+    rows = dbmod.list_queue(status="pending", limit=1_000_000)
+    dismissed = 0
+    for r in rows:
+        crop_abs = settings.faces_dir / r["crop_path"]
+        img = cv2.imread(str(crop_abs))
+        if img is None:
+            continue
+        if blur_variance(img) < settings.face_min_blur_var:
+            dbmod.update_queue_status(r["id"], "dismissed")
+            dismissed += 1
+    return {"scanned": len(rows), "dismissed": dismissed}

@@ -42,6 +42,10 @@ class Settings:
     track_ttl: float = 5.0                   # evict a track's cached name after this unseen gap (s)
     recognition_queue_max: int = 16          # max queued live face jobs before dropping
     live_det_size: int = 320                 # InsightFace det_size for live crops (offline stays 640)
+    # face quality gate (review queue + uploads) — drop blurry / tiny / low-confidence faces
+    face_min_px: int = 60                    # min detected-face bbox side, source pixels
+    face_min_det_score: float = 0.65         # InsightFace detector confidence
+    face_min_blur_var: float = 50.0          # variance of Laplacian on the 112px crop; lower = blurrier
 
 
 settings = Settings()

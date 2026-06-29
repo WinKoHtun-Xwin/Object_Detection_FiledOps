@@ -24,6 +24,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     )
     monkeypatch.setattr(cfg, "settings", patched)
     monkeypatch.setattr(dbmod, "settings", patched)
+    import app.api.recognition as recmod
+    monkeypatch.setattr(recmod, "settings", patched)
     dbmod._reset_for_tests()
     dbmod.init_schema()
 
@@ -32,10 +34,12 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     import app.recognition.engine as engmod
 
     fake_emb = np.zeros(512, dtype=np.float32); fake_emb[0] = 1.0
-    fake_crop = np.full((112, 112, 3), 200, dtype=np.uint8)
+    # Sharp, large, confident face so it passes the quality gate.
+    fake_crop = np.zeros((112, 112, 3), dtype=np.uint8)
+    fake_crop[::2] = 255
 
     def fake_detect(self, frame_bgr):
-        return [engmod.FaceResult(crop_bgr=fake_crop, embedding=fake_emb, bbox=(0,0,1,1), det_score=0.99)]
+        return [engmod.FaceResult(crop_bgr=fake_crop, embedding=fake_emb, bbox=(0,0,100,100), det_score=0.99)]
 
     monkeypatch.setattr(engmod.FaceEngine, "detect_and_embed", fake_detect)
     rec_pkg.gallery.reload()
@@ -96,3 +100,33 @@ def test_label_review_item_promotes_to_gallery(client: TestClient, tmp_path: Pat
     assert any(p["id"] == person_id and p["name"] == "Carol" for p in persons)
     pending = dbmod.list_queue(status="pending")
     assert pending == []
+
+
+def test_purge_lowquality_dismisses_blurry_keeps_sharp(client: TestClient, tmp_path: Path) -> None:
+    import cv2
+    from app.recognition import db as dbmod
+
+    qdir = tmp_path / "faces" / "queue"
+    qdir.mkdir(parents=True, exist_ok=True)
+    sharp = np.zeros((112, 112, 3), dtype=np.uint8)
+    for i in range(0, 112, 16):
+        for j in range(0, 112, 16):
+            if (i // 16 + j // 16) % 2 == 0:
+                sharp[i:i + 16, j:j + 16] = 255
+    flat = np.full((112, 112, 3), 128, dtype=np.uint8)
+    cv2.imwrite(str(qdir / "sharp.jpg"), sharp)
+    cv2.imwrite(str(qdir / "flat.jpg"), flat)
+
+    emb = np.zeros(512, dtype=np.float32); emb[0] = 1.0
+    dbmod.enqueue_review("queue/sharp.jpg", emb.tobytes(), None, None, None)
+    dbmod.enqueue_review("queue/flat.jpg", emb.tobytes(), None, None, None)
+
+    r = client.post("/api/review/purge-lowquality")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["scanned"] == 2
+    assert body["dismissed"] == 1
+
+    pending = dbmod.list_queue(status="pending")
+    assert len(pending) == 1
+    assert pending[0]["crop_path"] == "queue/sharp.jpg"

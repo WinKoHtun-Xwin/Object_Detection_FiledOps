@@ -15,6 +15,7 @@ from app.config import settings
 from app.recognition import db as dbmod
 from app.recognition.engine import FaceEngine
 from app.recognition.gallery import Gallery
+from app.recognition.quality import is_acceptable_face
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +75,12 @@ class RecognitionWorker:
                     prev = best_per_person.get(pid)
                     if prev is None or score > prev[0]:
                         best_per_person[pid] = (score, ts)
-                elif settings.match_low <= score < settings.match_high and pid is not None:
+                    continue
+                # Below high-confidence → candidate for the review queue. Skip
+                # blurry / tiny / low-confidence faces so they never get queued.
+                if not is_acceptable_face(face):
+                    continue
+                if settings.match_low <= score < settings.match_high and pid is not None:
                     self._save_review(face, rel_clip, suggested_id=pid, suggested_score=score)
                 else:
                     self._save_review(face, rel_clip, suggested_id=None, suggested_score=None)

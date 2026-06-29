@@ -35,7 +35,13 @@ def _unit(seed: int) -> np.ndarray:
 
 
 def _crop() -> np.ndarray:
-    return np.zeros((112, 112, 3), dtype=np.uint8)
+    """A sharp (high-variance) 112px crop that passes the quality gate."""
+    img = np.zeros((112, 112, 3), dtype=np.uint8)
+    for i in range(0, 112, 16):
+        for j in range(0, 112, 16):
+            if (i // 16 + j // 16) % 2 == 0:
+                img[i:i + 16, j:j + 16] = 255
+    return img
 
 
 def test_worker_writes_sighting_for_known_face(env: Path, monkeypatch) -> None:
@@ -94,6 +100,30 @@ def test_worker_writes_review_for_unknown_face(env: Path, monkeypatch) -> None:
     queue = dbmod.list_queue(status="pending")
     assert len(queue) == 1
     assert queue[0]["suggested_id"] is None or queue[0]["suggested_score"] < 0.55
+
+
+def test_worker_skips_blurry_face_for_review(env: Path, monkeypatch) -> None:
+    from app.recognition.worker import RecognitionWorker
+    from app.recognition.gallery import Gallery
+
+    g = Gallery()  # empty gallery → unknown face, would normally be queued
+    w = RecognitionWorker(engine=MagicMock(), gallery=g)
+    monkeypatch.setattr(
+        w, "_sample_frames",
+        lambda path: iter([(0.0, np.zeros((480, 640, 3), dtype=np.uint8))]),
+    )
+    # Flat crop → blurry → must be skipped, not enqueued.
+    blurry = np.full((112, 112, 3), 128, dtype=np.uint8)
+    w._engine.detect_and_embed.return_value = [
+        FaceResult(crop_bgr=blurry, embedding=_unit(7), bbox=(0, 0, 100, 100), det_score=0.99)
+    ]
+
+    clip_path = env / "clips" / "cam-A" / "2026-05-26" / "100000.mp4"
+    clip_path.parent.mkdir(parents=True, exist_ok=True)
+    clip_path.touch()
+    w._process(clip_path)
+
+    assert dbmod.list_queue(status="pending") == []
 
 
 def test_worker_drains_queue_in_background_thread(env: Path) -> None:

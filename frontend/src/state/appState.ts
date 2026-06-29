@@ -34,7 +34,7 @@ export const useAppState = create<AppState>((set) => ({
   yoloSize: 'n',
   yoloConf: 0.25,
   tracking: false,
-  mirror: true,
+  mirror: false,
   paused: false,
   recognizeFaces: false,
 

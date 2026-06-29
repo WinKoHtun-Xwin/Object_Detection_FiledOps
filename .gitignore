@@ -27,3 +27,6 @@ Thumbs.db
 
 # runtime-generated
 backend/data/
+
+# Python build/editable-install metadata
+*.egg-info/

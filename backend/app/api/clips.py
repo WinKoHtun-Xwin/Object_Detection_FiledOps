@@ -1,8 +1,6 @@
 """Clip listing endpoint — exposes recorded MP4s/JPGs to the frontend."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings

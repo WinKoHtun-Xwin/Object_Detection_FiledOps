@@ -115,8 +115,10 @@ class FaceEngine:
         results: list[FaceResult] = []
         for f in faces:
             x1, y1, x2, y2 = (int(v) for v in f.bbox)
-            x1 = max(0, x1); y1 = max(0, y1)
-            x2 = min(frame_bgr.shape[1], x2); y2 = min(frame_bgr.shape[0], y2)
+            x1 = max(0, x1)
+            y1 = max(0, y1)
+            x2 = min(frame_bgr.shape[1], x2)
+            y2 = min(frame_bgr.shape[0], y2)
             if x2 <= x1 or y2 <= y1:
                 continue
             crop = frame_bgr[y1:y2, x1:x2]

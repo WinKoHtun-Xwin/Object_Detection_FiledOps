@@ -14,7 +14,8 @@ from app.recognition import db as dbmod
 from app.recognition import face_engine, gallery
 
 log = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(tags=["People"])
+review_router = APIRouter(tags=["Review"])
 
 
 def _person_to_dict(row: dict) -> dict:
@@ -121,7 +122,7 @@ def list_person_clips(person_id: int) -> list[dict]:
     return out
 
 
-@router.get("/review")
+@review_router.get("/review")
 def list_review(limit: int = 50) -> list[dict]:
     rows = dbmod.list_queue(status="pending", limit=limit)
     return [
@@ -143,7 +144,7 @@ def list_review(limit: int = 50) -> list[dict]:
     ]
 
 
-@router.post("/review/{queue_id}/label")
+@review_router.post("/review/{queue_id}/label")
 def label_review(queue_id: int, body: dict) -> dict:
     item = dbmod.get_queue_item(queue_id)
     if not item:
@@ -174,7 +175,7 @@ def label_review(queue_id: int, body: dict) -> dict:
     return {"person_id": person_id}
 
 
-@router.post("/review/{queue_id}/dismiss")
+@review_router.post("/review/{queue_id}/dismiss")
 def dismiss_review(queue_id: int) -> dict:
     item = dbmod.get_queue_item(queue_id)
     if not item:

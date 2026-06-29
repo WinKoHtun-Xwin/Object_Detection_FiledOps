@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from app.runtime.device import probe
 
-router = APIRouter()
+router = APIRouter(tags=["System"])
 
 
 @router.get("/health")

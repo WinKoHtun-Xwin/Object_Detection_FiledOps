@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
 
-router = APIRouter()
+router = APIRouter(tags=["Clips"])
 
 
 @router.get("/clips")

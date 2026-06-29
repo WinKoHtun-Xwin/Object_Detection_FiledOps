@@ -3,7 +3,9 @@
     "allow": [
       "PowerShell(try { $r = Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 5; Write-Output \"FRONTEND $\\($r.StatusCode\\)\" } catch { Write-Output \"FRONTEND FAIL: $_\" })",
       "PowerShell(Get-ChildItem C:\\\\Users\\\\win-work\\\\Github\\\\Object_detection\\\\backend\\\\weights | Format-Table Name, @{Name='MB';Expression={[math]::Round\\($_.Length/1MB,1\\)}})",
-      "PowerShell(try { Get-NetTCPConnection -LocalPort 8000 -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force; \"killed pid $_\" } } catch { \"port 8000 free\" }; try { Get-NetTCPConnection -LocalPort 5173 -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force; \"killed pid $_\" } } catch { \"port 5173 free\" })"
+      "PowerShell(try { Get-NetTCPConnection -LocalPort 8000 -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force; \"killed pid $_\" } } catch { \"port 8000 free\" }; try { Get-NetTCPConnection -LocalPort 5173 -ErrorAction Stop | Select-Object -ExpandProperty OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force; \"killed pid $_\" } } catch { \"port 5173 free\" })",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/recognition/test_live.py -v)",
+      "Bash(.venv/Scripts/python.exe -m ruff check app)"
     ]
   }
 }

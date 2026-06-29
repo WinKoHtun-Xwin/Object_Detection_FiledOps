@@ -1,12 +1,20 @@
 # Object Detection Playground
 
-Live webcam inference with **YOLO26 (Ultralytics)** and **Meta SAM 3**, switchable from the browser.
+Live webcam inference playground. The browser captures webcam frames, streams JPEG-encoded frames over a binary WebSocket protocol to a FastAPI backend, which runs **YOLO26 (Ultralytics)** or **Meta SAM 3** inference and overlays normalized results on the live video. Layered on top: motion-triggered clip recording and InsightFace-based face recognition (live overlay + offline clip processing).
 
 - **Backend**: Python 3.12 + FastAPI + WebSocket, CUDA-accelerated inference on RTX 4070.
-- **Frontend**: Vite + React + TypeScript + Zustand. Captures webcam, streams JPEG frames to backend, overlays results on live video.
-- **Models**:
-  - YOLO26: detect (`yolo26n.pt`) + pose (`yolo26n-pose.pt`) — **working**
-  - SAM 3: image model + video predictor — code paths installed, **awaiting HuggingFace access approval for `facebook/sam3`**. Once approved, set `mode='sam3_image'` and the engine will lazy-load.
+- **Frontend**: Vite + React + TypeScript + Zustand. Captures the webcam, streams frames to the backend, and overlays results on the live video.
+
+## Features
+
+- **YOLO26 modes** — detect, pose, segmentation, OBB, and classification, switchable from the browser (sizes n/s/m/l/x). All working.
+- **SAM 3** — text-prompted image segmentation. Code paths installed; **awaiting HuggingFace access approval for `facebook/sam3`** (weights lazy-load once approved). The `sam3_video` mode id is reserved but not yet wired.
+- **Object tracking** — per-camera ByteTrack assigns a stable `track_id` to each detection when tracking (or recognition) is enabled.
+- **Motion-triggered clip recording** — a motion detector watches allowlisted classes and records MP4 clips with pre/post-roll and a trigger snapshot, one recorder per camera.
+- **Face recognition** (InsightFace `buffalo_l`):
+  - **Live overlay** — track-pinned recognizer names people in real time off a background worker thread.
+  - **Offline** — a background worker samples each closed motion clip, matches faces against the gallery, records confident sightings, and queues uncertain ones for human review.
+  - **Management UI** — people list, per-person galleries + clips, and a review queue for labeling unknown faces.
 
 ## Quick start
 
@@ -15,24 +23,40 @@ Live webcam inference with **YOLO26 (Ultralytics)** and **Meta SAM 3**, switchab
 cd backend
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e .
-uvicorn app.main:app --reload
+pip install -e ".[dev]"                 # includes pytest + ruff; drop [dev] for runtime only
+uvicorn app.main:app --reload           # serves on http://127.0.0.1:8000
 
 # Frontend (in another shell)
 cd frontend
 npm install
-npm run dev
+npm run dev                             # Vite dev server on http://localhost:5173
 ```
 
 Open http://localhost:5173 and allow camera access.
 
+YOLO26 weights auto-download via Ultralytics on first use. InsightFace + onnxruntime models download on first recognition. SAM 3 requires HuggingFace access approval for `facebook/sam3`.
+
+> The frontend has **no Vite proxy** — the REST base URL and WebSocket URL are hardcoded to `http://localhost:8000` / `ws://localhost:8000/ws`. If you change the backend port, update `frontend/src/api/recognition.ts`, `frontend/src/pages/LivePage.tsx`, and `cors_origins` in `backend/app/config.py`.
+
+## Tests & lint
+
+```powershell
+cd backend
+pytest                                  # all backend tests
+ruff check app                          # lint (line-length 100, target py312)
+
+cd ../frontend
+npm run build                           # tsc -b && vite build (type-check is part of build)
+npm run lint                            # eslint
+```
+
 ## Structure
 
-See [docs/design.md](docs/design.md) for the full architecture.
+```
+backend/   Python app — FastAPI, WebSocket /ws, inference / recording / recognition subsystems
+frontend/  TS app — webcam capture, WS streaming, canvas overlays, people/review pages
+docs/      Architecture notes (see docs/ooda-loop.md) + design specs and plans under docs/superpowers/
+scripts/   Dev smoke scripts (WebSocket / SAM3 / YOLO)
+```
 
-```
-backend/   Python app — FastAPI + inference engines
-frontend/  TS app — webcam, WS, canvas overlays
-docs/      Protocol spec, design notes
-scripts/   Dev scripts (download weights, etc.)
-```
+See [CLAUDE.md](CLAUDE.md) for the full architecture, the frame protocol contract, and subsystem details, and [docs/ooda-loop.md](docs/ooda-loop.md) for the pipeline as an OODA loop.

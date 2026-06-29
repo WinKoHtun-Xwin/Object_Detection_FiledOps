@@ -55,14 +55,14 @@ Back-pressure: the sender drops frames if the WebSocket isn't OPEN or a frame is
 - **[main.py](backend/app/main.py)** — app factory + `lifespan`: on startup creates dirs, runs `db.init_schema()`, `gallery.reload()`, starts the recognition worker; stops the worker on shutdown.
 - **api/** — routers. `stream.py` is the WebSocket inference endpoint (`/ws`, no prefix); the rest mount under `/api`: `health.py` (`/health`, `/device`), `clips.py` (`/clips`), `recognition.py` (people CRUD, `/review` queue).
 - **runtime/registry.py** — `ModelRegistry` singleton. Lazy-loads an engine per `(mode, size)` on first request and keeps it warm in-process. This is why the first frame of a new mode is slow.
-- **inference/** — `yolo.py` (`YoloEngine` wrapping `ultralytics.YOLO`, weights `yolo26{size}{suffix}.pt` in `weights/`) and `sam3_image.py` (text-prompted segmentation). Both serialize to normalized boxes; masks/seg are PNG-encoded base64 in the `rle` field.
+- **inference/** — `yolo.py` (`YoloEngine` wrapping `ultralytics.YOLO`, weights `yolo26{size}{suffix}.pt` in `weights/`) and `sam3_image.py` (text-prompted segmentation). Both serialize to normalized boxes; masks/seg are PNG-encoded base64 in the `rle` field. `tracking.py` — `CameraTrackers` runs one Ultralytics ByteTrack instance per `camera_id` off the shared detections; the YOLO detect path stamps a `track_id` on each box when `tracking` or `recognize` is set (live recognition pins names to track ids, so it implies tracking).
 
 ### Recognition subsystem (`recognition/`)
 Singletons wired in [recognition/__init__.py](backend/app/recognition/__init__.py): `face_engine`, `gallery`, `recognition_worker`, `live_recognizer`.
 - **engine.py** — `FaceEngine` wraps InsightFace `buffalo_l`; produces 512-d L2-normalized embeddings + 112×112 aligned crops.
 - **gallery.py** — in-memory `(N, 512)` matrix; `match()` is brute-force cosine similarity (lock-protected). Rebuilt from DB via `reload()`.
 - **Two-tier matching** (thresholds in config): `score >= match_high` (0.55) → confident sighting recorded; `match_low` (0.40) `<= score < match_high` → enqueued to `review_queue` for human labeling; below → unknown.
-- **live.py** — `LiveRecognizer`: per-camera throttled (`live_recognition_interval`) face matching for the live overlay, with a short result cache (`live_recognition_cache_ttl`).
+- **live.py** — `LiveRecognizer`: track-pinned live overlay recognition. A recognized name is pinned to `(camera_id, track_id)` and reused every frame at zero cost; the per-frame `annotate()` only reads the cache and enqueues misses onto a background worker thread (off the WS event loop) that runs detect/embed/match. Confirmed (high) tracks re-confirm every `live_recognition_refresh`s, tentative ones back off `live_recognition_retry`s, and a track's cached name is evicted after `track_ttl`s unseen (`recognition_queue_max` bounds the job queue).
 - **worker.py** — `RecognitionWorker`: background thread triggered by the `on_clip_closed` callback; samples a closed clip at `recognition_sample_fps`, matches faces, records sightings / enqueues review items.
 - **db.py** — SQLite schema: `persons`, `faces` (embedding stored as 2048-byte BLOB), `review_queue`, `clip_sightings`. DB at `backend/data/app.db`.
 

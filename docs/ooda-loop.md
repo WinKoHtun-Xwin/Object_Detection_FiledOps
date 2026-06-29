@@ -21,8 +21,8 @@ Each camera frame is one turn of a fast inner loop running ~15×/sec. This doc s
   │   "what is there?"  │                               │   "what does it mean?" │
   │                     │                               │                        │
   │ webcam → canvas     │                               │ JPEG → BGR decode      │
-  │ 640px, JPEG q0.7    │                               │ YOLO26 / SAM3 infer    │
-  │ buildPacket()       │                               │   → boxes/people/masks │
+  │ 640px, JPEG q0.7    │                               │ YOLO26 detect infer    │
+  │ buildPacket()       │                               │   → boxes              │
   │                     │                               │ face match vs gallery  │
   │ useFrameSender.ts   │                               │   → names (FaceMatch)  │
   │ stream.py  /ws      │                               │ registry.py inference/ │
@@ -37,7 +37,7 @@ Each camera frame is one turn of a fast inner loop running ~15×/sec. This doc s
   │   "do something"    │                               │  "is it worth it?"     │
   │                     │                               │                        │
   │ draw overlay        │                               │ motion? bbox drift     │
-  │  boxes/pose/names   │                               │   > motion_threshold   │
+  │  boxes/names        │                               │   > motion_threshold   │
   │ record MP4 + snap   │                               │ face score tier:       │
   │ enqueue review item │                               │   ≥0.55  → sighting    │
   │                     │                               │   0.40-0.55 → review   │
@@ -71,7 +71,7 @@ custom events. `★` marks planned pieces.
   │   "what is there?"  │                              │  "what does it mean?"          │
   │                     │                              │                                │
   │ webcam → canvas     │                              │ FAST lane (every frame):       │
-  │ 640px JPEG packet   │                              │  YOLO26 / SAM3 → boxes/people  │
+  │ 640px JPEG packet   │                              │  YOLO26 detect → boxes         │
   │ useFrameSender.ts   │                              │  face match → names            │
   │ stream.py /ws       │                              │ ─────────────────────────────  │
   └─────────────────────┘                              │ ★ SLOW lane (on event):        │
@@ -116,7 +116,7 @@ custom events. `★` marks planned pieces.
 | OODA stage | What it does | Today | Planned (★) |
 |------------|--------------|-------|-------------|
 | **Observe** | capture raw input | webcam → JPEG → WS packet (`useFrameSender.ts`, `stream.py`) | — |
-| **Orient** | turn input into meaning | YOLO/SAM inference + face match (`inference/`, `recognition/gallery.py`) | Vision LLM reasoning pass on events → NL description |
+| **Orient** | turn input into meaning | YOLO detect inference + face match (`inference/`, `recognition/gallery.py`) | Vision LLM reasoning pass on events → NL description |
 | **Decide** | choose a response | motion threshold + face score tiers (`motion.py`, `config.py`) | NL rule engine + user-defined custom events |
 | **Act** | execute, change the world | overlay draw, record MP4, enqueue review (`recorder.py`, `OverlayCanvas.tsx`) | notifications, write description+embedding to event index, answer chat |
 

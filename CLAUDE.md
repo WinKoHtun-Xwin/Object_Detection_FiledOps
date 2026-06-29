@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Live webcam inference playground. The browser captures webcam frames, streams JPEG-encoded frames over a binary WebSocket protocol to a FastAPI backend, which runs **YOLO26 (Ultralytics)** or **SAM 3** inference and returns normalized detection results that the frontend overlays on the live video. Layered on top: motion-triggered clip recording and InsightFace-based face recognition (both live overlay and offline clip processing).
+Live webcam inference playground. The browser captures webcam frames, streams JPEG-encoded frames over a binary WebSocket protocol to a FastAPI backend, which runs **YOLO26 (Ultralytics)** object detection and returns normalized detection results that the frontend overlays on the live video. Layered on top: motion-triggered clip recording and InsightFace-based face recognition (both live overlay and offline clip processing).
 
 - **Backend**: Python 3.12 + FastAPI + WebSocket, CUDA-accelerated (RTX 4070).
 - **Frontend**: Vite + React + TypeScript + Zustand.
-- SAM 3 weights require HuggingFace access approval for `facebook/sam3`; YOLO26 weights auto-download via Ultralytics on first use.
+- YOLO26 weights (`yolo26{size}.pt`, size n/s/m/l/x) auto-download via Ultralytics on first use.
 
 ## Commands
 
@@ -41,11 +41,11 @@ Client → server packet ([frontend/src/stream/protocol.ts](frontend/src/stream/
 ```
 [u8 mode_id][u8 variant_id][u32 LE header_len][header_json (optional)][jpeg_bytes]
 ```
-- `mode_id`: 0=yolo_detect, 1=yolo_pose, 2=sam3_image, 3=sam3_video, 4=yolo_seg, 5=yolo_obb, 6=yolo_cls
-- `variant_id`: YOLO size n/s/m/l/x = 0–4 (or SAM3 prompt kind)
-- `header_json`: `{camera_id, conf, text, recognize, tracking}` — all optional
+- `mode_id`: 0=yolo_detect (the only mode)
+- `variant_id`: YOLO size n/s/m/l/x = 0–4
+- `header_json`: `{camera_id, conf, recognize, tracking}` — all optional
 
-Server → client is JSON: `{type, boxes?, people?, masks?, faces?, frame_id, ms}`. **All coordinates are normalized `[0,1]`**; the frontend scales them to canvas pixels. `faces` is an optional array of `FaceMatch` nested into detect/pose responses when `recognize` is set.
+Server → client is JSON: `{type: "detect", boxes, faces?, frame_id, ms}`. **All coordinates are normalized `[0,1]`**; the frontend scales them to canvas pixels. `faces` is an optional array of `FaceMatch` nested into the detect response when `recognize` is set.
 
 Back-pressure: the sender drops frames if the WebSocket isn't OPEN or a frame is already in-flight (no queueing) — see [frontend/src/stream/useFrameSender.ts](frontend/src/stream/useFrameSender.ts).
 
@@ -54,8 +54,8 @@ Back-pressure: the sender drops frames if the WebSocket isn't OPEN or a frame is
 - **[config.py](backend/app/config.py)** — frozen `Settings` dataclass, instantiated as module-level singleton `settings`. **Single source of truth** for all paths, ports/CORS, model defaults, recording params, and recognition thresholds. Change behavior here, not scattered constants.
 - **[main.py](backend/app/main.py)** — app factory + `lifespan`: on startup creates dirs, runs `db.init_schema()`, `gallery.reload()`, starts the recognition worker; stops the worker on shutdown.
 - **api/** — routers. `stream.py` is the WebSocket inference endpoint (`/ws`, no prefix); the rest mount under `/api`: `health.py` (`/health`, `/device`), `clips.py` (`/clips`), `recognition.py` (people CRUD, `/review` queue).
-- **runtime/registry.py** — `ModelRegistry` singleton. Lazy-loads an engine per `(mode, size)` on first request and keeps it warm in-process. This is why the first frame of a new mode is slow.
-- **inference/** — `yolo.py` (`YoloEngine` wrapping `ultralytics.YOLO`, weights `yolo26{size}{suffix}.pt` in `weights/`) and `sam3_image.py` (text-prompted segmentation). Both serialize to normalized boxes; masks/seg are PNG-encoded base64 in the `rle` field. `tracking.py` — `CameraTrackers` runs one Ultralytics ByteTrack instance per `camera_id` off the shared detections; the YOLO detect path stamps a `track_id` on each box when `tracking` or `recognize` is set (live recognition pins names to track ids, so it implies tracking).
+- **runtime/registry.py** — `ModelRegistry` singleton. Lazy-loads a `YoloEngine` per `(mode, size)` on first request and keeps it warm in-process. This is why the first frame at a new size is slow.
+- **inference/** — `yolo.py` (`YoloEngine` wrapping `ultralytics.YOLO`, weights `yolo26{size}.pt` in `weights/`) serializes detections to normalized boxes. `tracking.py` — `CameraTrackers` runs one Ultralytics ByteTrack instance per `camera_id` off the shared detections; the detect path stamps a `track_id` on each box when `tracking` or `recognize` is set (live recognition pins names to track ids, so it implies tracking).
 
 ### Recognition subsystem (`recognition/`)
 Singletons wired in [recognition/__init__.py](backend/app/recognition/__init__.py): `face_engine`, `gallery`, `recognition_worker`, `live_recognizer`.
@@ -81,9 +81,9 @@ useWebcam → CameraView → useFrameSender (canvas→JPEG→buildPacket) → us
   → server → useInferenceWS.lastMessage → LivePage.pushResult → appState.lastResult → OverlayCanvas
 ```
 
-- **state/appState.ts** — single Zustand store holding all inference config (`mode`, `yoloSize`, `yoloConf`, `sam3*`, `tracking`, `recognizeFaces`, `mirror`, `paused`), camera selection, and live results (`fps`, `inferenceMs`, `lastResult`). `useFrameSender` reads config via a ref and packs it into the packet header each tick.
+- **state/appState.ts** — single Zustand store holding all inference config (`yoloSize`, `yoloConf`, `tracking`, `recognizeFaces`, `mirror`, `paused`), camera selection, and live results (`fps`, `inferenceMs`, `lastResult`). `useFrameSender` reads config via a ref and packs it into the packet header each tick.
 - **stream/** — `protocol.ts` (packet builder + server message types), `useFrameSender.ts` (rAF capture loop, 640px max side, JPEG q0.7, drop-on-backpressure, FPS counter), `useInferenceWS.ts` (connection + JSON parsing).
-- **overlay/OverlayCanvas.tsx** — canvas sized to video intrinsic resolution; routes `lastResult.type` to `drawBoxes` / `drawPose` (COCO-17) / `drawMasks` / `drawOBB` / `drawClassification`. `drawFaceNames.ts` exists for `FaceMatch` overlays.
+- **overlay/OverlayCanvas.tsx** — canvas sized to video intrinsic resolution; draws the detect result via `drawBoxes`. `drawFaceNames.ts` exists for `FaceMatch` overlays.
 - **pages/** — routes (React Router v7, defined in `main.tsx`): `/` LivePage, `/people` PeoplePage, `/people/:id` PersonDetailPage, `/review` ReviewPage.
 - **api/recognition.ts** — REST client for people/clips/review; `absUrl()` resolves relative media paths against the backend base URL.
 
